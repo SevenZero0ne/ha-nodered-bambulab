@@ -1,0 +1,339 @@
+variables:
+  hms_common: !input hms_common_errors
+  hms_serious: !input hms_serious_errors
+  hms_fatal: !input hms_fatal_errors
+  pr_layer: !input print_layer
+  first_layer_inspect_on: !input is_first_layer_inspect_on
+  exit_finish_after_duration: !input exit_finish_after
+blueprint:
+  name: Bambu Lab ESPhome Controller
+  description: Control one or more ESPhome lights with Bambu 3D printer
+  domain: automation
+  source_url: https://github.com/greghesp/ha-bambulab/blob/main/blueprints/wled_controller.yaml
+  input:
+    printer_action:
+      description: "The printer action sensor from the integration.
+        NodeRed Integration: sensor.<model>_<printer_name>_action."
+      selector:
+        entity:
+          filter:
+          - domain:
+            - sensor
+            integration: mqtt
+          multiple: false
+    printer_stage:
+      name: Current Stage of your Bambu Lab Printer
+      description: "The printer current stage sensor from the integration.
+        NodeRed Integration: sensor.<model>_<printer_name>_stage."
+      selector:
+        entity:
+          filter:
+          - domain:
+            - sensor
+            integration: mqtt
+          multiple: false
+    printer_status:
+      name: Current Status of your Bambu Lab Printer
+      description: "The printer current stage sensor from the integration.
+        NodeRed Integration: sensor.<model>_<printer_name>_print_status."
+      selector:
+        entity:
+          filter:
+          - domain:
+            - sensor
+            integration: mqtt
+          multiple: false
+    chamber_light:
+      name: Chamber Light of your Bambu Lab Printer
+      description: "The printer chamber light sensor from the integration.
+        NodeRed Integration: sensor.<model>_<printer_name>_chamber_light."
+      selector:
+        entity:
+          filter:
+          - domain:
+            - light
+            integration: mqtt
+          multiple: false
+    printer_door:
+      name: Printer Door of your Bambu Lab Printer
+      description: "The printer door sensor from the integration.
+        NodeRed Integration: sensor.<model>_<printer_name>_door."
+      selector:
+        entity:
+          filter:
+          - domain:
+            - sensor
+            integration: mqtt
+          multiple: false
+    print_layer:
+      name: Print Layer of your Bambu Lab Printer
+      description: "The print layer number sensor from the integration.
+        NodeRed Integration: sensor.<model>_<printer_name>_layer_num."
+      selector:
+        entity:
+          filter:
+          - domain:
+            - sensor
+            integration: mqtt
+          multiple: false
+    is_first_layer_inspect_on:
+      name: Is First Layer Inspection enabled sensor of your Bambu Lab Printer
+      description: "First Layer Inspection status sensor from the integration.
+        NodeRed Integration: sensor.<model>_<printer_name>_first_layer_inspection."
+      selector:
+        entity:
+          filter:
+          - domain:
+            - sensor
+            integration: mqtt
+          multiple: false
+    printer_errors:
+      name: Print Error Sensor
+      description: "The print error sensor from the integration. Not any of the HMS sensors!
+        NodeRed Integration: sensor.<model>_<printer_name>_print_error."
+      selector:
+        entity:
+          filter:
+            domain: sensor
+            integration: mqtt
+    hms_common_errors:
+      name: HMS Common Error Sensor
+      description: "The hms common error sensor from the integration.
+        NodeRed Integration: sensor.<model>_<printer_name>_hms_common."
+      selector:
+        entity:
+          filter:
+            domain: sensor
+            integration: mqtt
+    hms_serious_errors:
+      name: HMS Serious Error Sensor
+      description: "The hms serious error sensor from the integration.
+        NodeRed Integration: sensor.<model>_<printer_name>_hms_serious."
+      selector:
+        entity:
+          filter:
+            domain: sensor
+            integration: mqtt
+    hms_fatal_errors:
+      name: HMS Fatal Error Sensor
+      description: "The hms fatal error sensor from the integration.
+        NodeRed Integration: sensor.<model>_<printer_name>_hms_fatal."
+      selector:
+        entity:
+          filter:
+            domain: sensor
+            integration: mqtt
+    esphome_lights:
+      name: ESPhome Light devices
+      description: "Select the ESPhome light devices you wish to control."
+      selector:
+        device:
+          filter:
+            integration: esphome
+          multiple: true
+    exit_finish_after:
+      name: Exit Finish After
+      description: "Time to wait after print finishes to turn back to white"
+      default: 
+        minutes: 5
+      selector:
+        duration: {}
+alias: Bambu Lab ESPhome Controller
+description: ''
+trigger:
+- platform: state
+  entity_id:
+  - !input chamber_light
+  - !input printer_action
+  - !input printer_stage
+  - !input printer_status
+  - !input printer_door
+  - !input print_layer
+  - !input printer_errors
+  - !input hms_common_errors
+  - !input hms_serious_errors
+  - !input hms_fatal_errors
+  - !input is_first_layer_inspect_on
+  alias: When printer stage, action or chamber light state changes
+condition: []
+action:
+- if:
+  - condition: state
+    state: 'on'
+    alias: chamber light is on
+    entity_id: !input chamber_light
+  - condition: not
+    conditions:
+    - condition: state
+      entity_id: !input printer_stage
+      state: Scanning bed surface
+      alias: Scanning Bed Surface
+    - condition: state
+      entity_id: !input printer_stage
+      state: Cleaning nozzle tip
+      alias: Cleaning Nozzle Tip
+    - condition: state
+      entity_id: !input printer_stage
+      state: Calibrating extrusion
+      alias: Calibrating Extrusion
+    - condition: state
+      entity_id: !input printer_stage
+      state: Calibrating extrusion flow
+      alias: Calibrating Extrusion Flow
+    - condition: state
+      entity_id: !input printer_action
+      state: offline
+      alias: Printer is off
+    - condition: template
+      value_template: >
+        {{ is_state(first_layer_inspect_on, 'ON') and
+            state_attr(hms_common, 'HMS_0c00_0300_0003_000b Description') == "Inspecting the first layer: please wait a moment." and
+            (states(hms_common) | int) >= 1 and
+            (states(pr_layer) | int) == 2 }}
+      alias: Inspecting the first layer and state >= 1
+    alias: And Lidar is NOT on
+  then:
+  - service: light.turn_on
+    data:
+      kelvin: 4000
+      brightness_pct: 100
+      #rgbww_color:
+      effect: None
+    alias: Turn ESPhome light on white
+    target:
+      device_id: !input esphome_lights
+  - choose:
+    - conditions:
+      - condition: or
+        conditions:
+        - condition: state
+          entity_id: !input printer_action
+          state: Paused due to filament runout
+        - condition: state
+          entity_id: !input printer_action
+          state: Pause of front cover falling
+        - condition: state
+          entity_id: !input printer_action
+          state: Paused due to nozzle temperature malfunction
+        - condition: state
+          entity_id: !input printer_action
+          state: Paused due to heat bed temperature malfunction
+        - condition: template
+          value_template: "{{ states(hms_serious) | int >= 1 }}"
+        - condition: template
+          value_template: "{{ states(hms_fatal) | int >= 1 }}"
+      sequence:
+      - service: light.turn_on
+        data:
+          rgbww_color:
+          - 255
+          - 0
+          - 0
+          - 0
+          - 0
+          brightness: 255
+          effect: None
+        target:
+          device_id: !input esphome_lights
+        alias: Turn on ESPhome to red
+    alias: Do we need to set color to red?
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: "{{ trigger.from_state.state == 'RUNNING' and trigger.to_state.state == 'FINISH' }}"
+        alias: Status changed from RUNNING to FINISH
+      sequence:
+      - service: light.turn_on
+        data:
+          rgbww_color:
+          - 0
+          - 255
+          - 0
+          - 0
+          - 0
+          brightness: 255
+          effect: None
+        target:
+          device_id: !input esphome_lights
+        alias: Turn on ESPhome to green
+      - delay: "{{ exit_finish_after_duration }}"
+      - choose:
+        - conditions:
+          - condition: state
+            entity_id: !input printer_door
+            state: 'open'
+          sequence:
+          - service: light.turn_on
+            data:
+              kelvin: 4000
+              brightness_pct: 100
+              #rgbww_color:
+              effect: None
+            target:
+              device_id: !input esphome_lights
+            alias: Turn on ESPhome to white
+        default:
+        - service: light.turn_on
+          data:
+            kelvin: 4000
+            brightness_pct: 100
+            #rgbww_color:
+            effect: None
+          target:
+            device_id: !input esphome_lights
+          alias: Turn on ESPhome to white
+    alias: Do we need to set color to green?
+  - choose:
+    - conditions:
+      - condition: or
+        conditions:
+        - condition: state
+          entity_id: !input printer_stage
+          state: Auto bed leveling
+      sequence:
+      - service: light.turn_on
+        data:
+          rgbww_color:
+          - 0
+          - 0
+          - 255
+          - 0
+          - 0
+          brightness: 255
+          effect: None
+        target:
+          device_id: !input esphome_lights
+        alias: Turn on ESPhome to blue
+    alias: Do we need to set color to blue?
+  - choose:
+    - conditions:
+      - condition: or
+        conditions:
+        - condition: state
+          entity_id: !input printer_stage
+          state: Heatbed preheating
+        - condition: state
+          entity_id: !input printer_stage
+          state: Heating hotend
+      sequence:
+      - service: light.turn_on
+        data:
+          rgbww_color:
+          - 255
+          - 169
+          - 0
+          - 0
+          - 0
+          brightness: 255
+          effect: None
+        target:
+          device_id: !input esphome_lights
+        alias: Turn on ESPhome to yellow
+    alias: Do we need to set color to yellow?
+  else:
+  - service: light.turn_off
+    data: {}
+    target:
+      device_id: !input esphome_lights
+    alias: Turn ESPhome light off
+mode: single
