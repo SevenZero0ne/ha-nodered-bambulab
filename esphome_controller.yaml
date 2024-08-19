@@ -9,7 +9,7 @@ blueprint:
   name: Bambu Lab ESPhome Controller
   description: Control one or more ESPhome lights with Bambu 3D printer
   domain: automation
-  source_url: https://github.com/greghesp/ha-bambulab/blob/main/blueprints/wled_controller.yaml
+  source_url: https://github.com/SevenZero0ne/ha-nodered-bambulab/blob/main/esphome_controller.yaml
   input:
     printer_action:
       description: "The printer action sensor from the integration.
