@@ -56,8 +56,15 @@ variables:
   filament_runout_rgb_color: !input paused_filament_runout_rgb_color
   filament_runout_color_temp: !input paused_filament_runout_color_temp
   filament_runout_light_effect: !input paused_filament_runout_light_effect
-  filament_runout_codes:
-    value: ['700700000020007', '701700000020007', '703700000020007', '702700000020007', '7FF8011', '3008004', '7008006', '7008011', '7018011', '7028011', '7038011', '12008011']
+  filament_runout_codes: ['700700000020007', '701700000020007', '703700000020007', '702700000020007', '7FF8011', '3008004', '7008006', '7008011', '7018011', '7028011', '7038011', '12008011']
+  nozzle_temp_fail_use_rgb: !input paused_nozzle_temp_fail_use_rgb
+  nozzle_temp_fail_rgb_color: !input paused_nozzle_temp_fail_rgb_color
+  nozzle_temp_fail_color_temp: !input paused_nozzle_temp_fail_color_temp
+  nozzle_temp_fail_light_effect: !input paused_nozzle_temp_fail_light_effect
+  bed_temp_fail_use_rgb: !input paused_bed_temp_fail_use_rgb
+  bed_temp_fail_rgb_color: !input paused_bed_temp_fail_rgb_color
+  bed_temp_fail_color_temp: !input paused_bed_temp_fail_color_temp
+  bed_temp_fail_light_effect: !input paused_bed_temp_fail_light_effect
 
 blueprint:
   name: Bambu Lab ESPhome Controller
@@ -480,6 +487,43 @@ blueprint:
             - Color Cycle
           mode: dropdown
 
+    paused_bed_temp_fail_use_rgb:
+      name: Use RGB Color for Paused due to heat bed temperature malfunction State
+      description: "Select whether to use RGB color or color temperature for the heat bed temperature malfunction state. 
+        Disabled=Color Temp, Enabled=RGB"
+      default: true
+      selector:
+        boolean: {}
+    paused_bed_temp_fail_rgb_color:
+      name: Paused due to heat bed temperature malfunction malfunction State RGB Color
+      description: "Set the RGB color to be used for the heat bed temperature malfunction state."
+      default: [255, 0, 0] 
+      selector:
+        color_rgb: {}
+    paused_bed_temp_fail_color_temp:
+      name: Paused due to heat bed temperature malfunction State Color Temperature
+      description: "Set the color temperature to be used for the heat bed temperature malfunction state."
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 6000
+          unit_of_measurement: "K"
+          mode: slider
+    paused_bed_temp_fail_light_effect:
+      name: Paused due to heat bed temperature malfunction State Light Effect
+      description: "Select the light effect to be used for the heat bed temperature malfunction state."
+      default: Solid
+      selector:
+        select:
+          options:
+            - Solid
+            - None
+            - Flicker
+            - Strobe
+            - Color Cycle
+          mode: dropdown
+
     printer_action:
       name: Current Action of your Bambu Lab Printer
       description: "The printer action sensor from the integration.
@@ -709,32 +753,9 @@ action:
 
   - choose:
     - conditions:
-      - condition: or
-        conditions:
-        - condition: template
-          value_template: "{{ states(print_action) == 'Paused due to nozzle temperature malfunction' }}"
-        - condition: template
-          value_template: "{{ states(print_action) == 'Paused due to heat bed temperature malfunction' }}"
-      sequence:
-      - service: light.turn_on
-        data:
-          rgbww_color:
-          - 255
-          - 0
-          - 0
-          - 0
-          - 0
-          brightness_pct: "{{ bright_pct }}"
-          effect: None
-        target:
-          device_id: !input esphome_lights
-        alias: Turn on ESPhome to red
-
-  - choose:
-    - conditions:
         - condition: template
           value_template: >
-            {{ state_attr(printer_error, 'code') in ['700700000020007', '701700000020007', '703700000020007', '702700000020007', '7FF8011', '3008004', '7008006', '7008011', '7018011', '7028011', '7038011', '12008011'] }}
+            {{ state_attr(printer_error, 'code') in filament_runout_codes }}
       sequence:
         - service: persistent_notification.create
           data:
@@ -862,6 +883,70 @@ action:
                   device_id: !input esphome_lights
                 alias: Turn ESPhome light to Color Temp
     alias: Handle HMS Serious Error Stage
+
+  - choose:
+    - conditions:
+        - condition: template
+          value_template: "{{ states(print_action) == 'Paused due to nozzle temperature malfunction' }}"
+      sequence:
+        - choose:
+            - conditions:
+                - condition: template
+                  value_template: "{{ nozzle_temp_fail_use_rgb }}"
+              sequence:
+                - service: light.turn_on
+                  data:
+                    rgb_color: "{{ nozzle_temp_fail_rgb_color }}"
+                    brightness_pct: "{{ bright_pct }}"
+                    effect: "{{ nozzle_temp_fail_light_effect }}"
+                  target:
+                    device_id: !input esphome_lights
+                  alias: Turn ESPhome light to RGB
+            - conditions:
+                - condition: template
+                  value_template: "{{ not nozzle_temp_fail_use_rgb }}"
+              sequence:
+                - service: light.turn_on
+                  data:
+                    kelvin: "{{ nozzle_temp_fail_color_temp }}"
+                    brightness_pct: "{{ bright_pct }}"
+                    effect: "{{ nozzle_temp_fail_light_effect }}"
+                  target:
+                    device_id: !input esphome_lights
+                  alias: Turn ESPhome light to Color Temp
+    alias: Handle Pause due to nozzle temperature malfunction stage
+
+  - choose:
+    - conditions:
+        - condition: template
+          value_template: "{{ states(print_action) == 'Paused due to heat bed temperature malfunction' }}"
+      sequence:
+        - choose:
+            - conditions:
+                - condition: template
+                  value_template: "{{ bed_temp_fail_use_rgb }}"
+              sequence:
+                - service: light.turn_on
+                  data:
+                    rgb_color: "{{ bed_temp_fail_rgb_color }}"
+                    brightness_pct: "{{ bright_pct }}"
+                    effect: "{{ bed_temp_fail_light_effect }}"
+                  target:
+                    device_id: !input esphome_lights
+                  alias: Turn ESPhome light to RGB
+            - conditions:
+                - condition: template
+                  value_template: "{{ not bed_temp_fail_use_rgb }}"
+              sequence:
+                - service: light.turn_on
+                  data:
+                    kelvin: "{{ bed_temp_fail_color_temp }}"
+                    brightness_pct: "{{ bright_pct }}"
+                    effect: "{{ bed_temp_fail_light_effect }}"
+                  target:
+                    device_id: !input esphome_lights
+                  alias: Turn ESPhome light to Color Temp
+    alias: Handle Pause due to bed temperature malfunction stage
 
     #alias: Do we need to set color to red?
 
@@ -996,8 +1081,7 @@ action:
           - condition: template
             value_template: >
               {{ is_state(print_status, 'PAUSE') and
-                state_attr(printer_error, 'code') not in ['700700000020007', '701700000020007', '703700000020007', '702700000020007', '7FF8011', '3008004', '7008006', '7008011', '7018011', '7028011', '7038011', '12008011'] and
-                states(print_action) != 'Paused due to filament runout' }}
+                state_attr(printer_error, 'code') not in filament_runout_codes }}
         sequence:
           - choose:
               - conditions:
@@ -1024,32 +1108,6 @@ action:
                     target:
                       device_id: !input esphome_lights
                     alias: Turn ESPhome light to PAUSED Color Temp
-          - wait_template: "{{ not is_state(print_status, 'PAUSE') or is_state(door_sensor, 'open') }}"
-          - choose:
-              - conditions:
-                  - condition: template
-                    value_template: "{{ replicate_state_use_rgb }}"
-                sequence:
-                  - service: light.turn_on
-                    data:
-                      rgb_color: "{{ replicate_state_rgb_color }}"
-                      brightness_pct: "{{ bright_pct }}"
-                      effect: "{{ replicate_state_light_effect }}"
-                    target:
-                      device_id: !input esphome_lights
-                    alias: Turn ESPhome light to Replicate RGB
-              - conditions:
-                  - condition: template
-                    value_template: "{{ not replicate_state_use_rgb }}"
-                sequence:
-                  - service: light.turn_on
-                    data:
-                      kelvin: "{{ replicate_state_color_temp }}"
-                      brightness_pct: "{{ bright_pct }}"
-                      effect: "{{ replicate_state_light_effect }}"
-                    target:
-                      device_id: !input esphome_lights
-                    alias: Turn ESPhome light to Replicate Color Temp
 
   - choose:
     - conditions:
@@ -1120,6 +1178,38 @@ action:
     alias: Handle Heatbed Preheating or Heating hotend
 
     #alias: Do we need to set color to yellow?
+
+  - choose:
+    - conditions:
+        - condition: template
+          value_template: "{{ states(door_sensor) == 'open' }}"
+      sequence:
+        - choose:
+            - conditions:
+                - condition: template
+                  value_template: "{{ replicate_state_use_rgb }}"
+              sequence:
+                - service: light.turn_on
+                  data:
+                    rgb_color: "{{ replicate_state_rgb_color }}"
+                    brightness_pct: "{{ bright_pct }}"
+                    effect: "{{ replicate_state_light_effect }}"
+                  target:
+                    device_id: !input esphome_lights
+                  alias: Turn ESPhome light to Replicate State RGB
+            - conditions:
+                - condition: template
+                  value_template: "{{ not replicate_state_use_rgb }}"
+              sequence:
+                - service: light.turn_on
+                  data:
+                    kelvin: "{{ replicate_state_color_temp }}"
+                    brightness_pct: "{{ bright_pct }}"
+                    effect: "{{ replicate_state_light_effect }}"
+                  target:
+                    device_id: !input esphome_lights
+                  alias: Turn ESPhome light to Replicate State Color Temp
+    alias: Handle Door Open to Replicate Color
 
   else:
   - service: light.turn_off
