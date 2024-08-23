@@ -713,7 +713,7 @@ action:
 
         #alias: Turn on ESPhome to green
         
-        - wait_template: "{{ is_state(door_sensor, 'open') or not is_state(printer_status, 'FINISH') }}"
+        - wait_template: "{{ is_state(door_sensor, 'open') }}"
           timeout: "{{ exit_finish_after_duration }}"
         
         - choose:
