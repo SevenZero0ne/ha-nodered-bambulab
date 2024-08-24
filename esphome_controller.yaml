@@ -11,6 +11,7 @@ variables:
   hms_fatal: !input hms_fatal_errors
   first_layer_inspect_on: !input is_first_layer_inspect_on
   exit_finish_after_duration: !input exit_finish_after
+  idle_timeout_duration: !input printer_idle_timeout_duration
   bright_pct: !input brightness_pct
   replicate_state_use_rgb: !input replicate_led_state_use_rgb
   replicate_state_rgb_color: !input replicate_led_state_rgb_color
@@ -65,6 +66,8 @@ variables:
   bed_temp_fail_rgb_color: !input paused_bed_temp_fail_rgb_color
   bed_temp_fail_color_temp: !input paused_bed_temp_fail_color_temp
   bed_temp_fail_light_effect: !input paused_bed_temp_fail_light_effect
+  toggle_exit_finish_after: !input toggle_exit_finish_after_duration
+  toggle_light_idle_timeout_duration: !input toggle_printer_timeout_duration
 
 blueprint:
   name: Bambu Lab ESPhome Controller
@@ -73,6 +76,17 @@ blueprint:
   source_url: https://github.com/greghesp/ha-bambulab/blob/main/blueprints/wled_controller.yaml
   input:
 
+    brightness_pct:
+      name: Brightness Percentage
+      description: "Brightness level for the ESPhome light, ranging from 0 to 100%."
+      default: 100
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 5
+          unit_of_measurement: '%'
+          mode: slider
     replicate_led_state_use_rgb:
       name: Use RGB Color for Replicate Led State
       description: "Select whether to use RGB color or color temperature for replicate led state.
@@ -146,11 +160,17 @@ blueprint:
             - Strobe
             - Color Cycle
           mode: dropdown
+    toggle_exit_finish_after_duration:
+      name: Turn on Exit Finish After timer
+      description: "Enable this to turn on Exit Finish After timer ."
+      default: true
+      selector:
+        boolean: {}
     exit_finish_after:
       name: Exit Finish After
-      description: "Time to wait after print finishes to turn back to white"
+      description: "Time to wait after print finishes to turn back to replicate state"
       default: 
-        minutes: 5
+        minutes: 15
       selector:
         duration: {}
 
@@ -524,6 +544,39 @@ blueprint:
             - Color Cycle
           mode: dropdown
 
+    chamber_light_off_door_open:
+      name: Turn ESPhome light on when Door is open
+      description: "Enable this to turn on ESPhome light on when Door is open & chamber light is off."
+      default: true
+      selector:
+        boolean: {}
+    chamber_lights_on_print_start:
+      name: Turn Chamber light on when print is started
+      description: "Enable this to turn on Chamber light on when a print is started."
+      default: true
+      selector:
+        boolean: {}
+    logo_light_off_failed_finish:
+      name: Turn Tool Head Logo Light off when print is Finished or Failed
+      description: "Enable this to turn off tool head logo light when a print is finished or failed."
+      default: true
+      selector:
+        boolean: {}
+
+    toggle_printer_timeout_duration:
+      name: Turn on Chamber light timeout after timer
+      description: "Enable this to turn on Chamber light timeout timer ."
+      default: true
+      selector:
+        boolean: {}
+    printer_idle_timeout_duration:
+      name: Chamber light timeout after timer
+      description: "Time to wait when printer is idle to turn off chamber light."
+      default: 
+        minutes: 45
+      selector:
+        duration: {}
+
     printer_action:
       name: Current Action of your Bambu Lab Printer
       description: "The printer action sensor from the integration.
@@ -657,35 +710,6 @@ blueprint:
             integration: esphome
           multiple: true
 
-    brightness_pct:
-      name: Brightness Percentage
-      description: "Brightness level for the ESPhome light, ranging from 0 to 100%."
-      default: 100
-      selector:
-        number:
-          min: 0
-          max: 100
-          step: 5
-          unit_of_measurement: '%'
-          mode: slider
-    chamber_light_off_door_open:
-      name: Turn ESPhome light on when Door is open
-      description: "Enable this to turn on ESPhome light on when Door is open & chamber light is off."
-      default: true
-      selector:
-        boolean: {}
-    chamber_lights_on_print_start:
-      name: Turn Chamber light on when print is started
-      description: "Enable this to turn on Chamber light on when a print is started."
-      default: true
-      selector:
-        boolean: {}
-    logo_light_off_failed_finish:
-      name: Turn Tool Head Logo Light off when print is Finished or Failed
-      description: "Enable this to turn off tool head logo light when a print is finished or failed."
-      default: true
-      selector:
-        boolean: {}
 alias: Bambu Lab ESPhome Controller
 description: ''
 trigger:
@@ -982,66 +1006,8 @@ action:
                   target:
                     device_id: !input esphome_lights
                   alias: Turn ESPhome light to Color Temp
+    alias: Handle RUNNING to FINISH status
 
-        #alias: Turn on ESPhome to green
-        
-        - wait_template: "{{ is_state(door_sensor, 'open') }}"
-          timeout: "{{ exit_finish_after_duration }}"
-        
-        - choose:
-          - conditions:
-            - condition: template
-              value_template: "{{ is_state(door_sensor, 'open') }}"
-            - condition: template
-              value_template: "{{ not is_state(printer_status, 'FINISH') }}"
-            sequence:
-            - choose:
-              - conditions:
-                - condition: template
-                  value_template: "{{ replicate_state_use_rgb }}"
-                sequence:
-                - service: light.turn_on
-                  data:
-                    rgb_color: "{{ replicate_state_rgb_color }}"
-                    brightness_pct: "{{ bright_pct }}"
-                    effect: "{{ replicate_state_light_effect }}"
-                  target:
-                    device_id: !input esphome_lights
-                  alias: Turn ESPhome light to RGB
-              default:
-              - service: light.turn_on
-                data:
-                  kelvin: "{{ replicate_state_color_temp }}"
-                  brightness_pct: "{{ bright_pct }}"
-                  effect: "{{ replicate_state_light_effect }}"
-                target:
-                  device_id: !input esphome_lights
-                alias: Turn ESPhome light to Color Temp
-              
-          default: #default if door isn's opened
-            - choose:
-              - conditions:
-                - condition: template
-                  value_template: "{{ replicate_state_use_rgb }}"
-                sequence:
-                - service: light.turn_on
-                  data:
-                    rgb_color: "{{ replicate_state_rgb_color }}"
-                    brightness_pct: "{{ bright_pct }}"
-                    effect: "{{ replicate_state_light_effect }}"
-                  target:
-                    device_id: !input esphome_lights
-                  alias: Turn ESPhome light to RGB
-              default:
-              - service: light.turn_on
-                data:
-                  kelvin: "{{ replicate_state_color_temp }}"
-                  brightness_pct: "{{ bright_pct }}"
-                  effect: "{{ replicate_state_light_effect }}"
-                target:
-                  device_id: !input esphome_lights
-                alias: Turn ESPhome light to Color Temp
-          
     #alias: Do we need to set color to green?
 
   - choose:
@@ -1108,6 +1074,7 @@ action:
                     target:
                       device_id: !input esphome_lights
                     alias: Turn ESPhome light to PAUSED Color Temp
+    alias: Handle PAUSED Stage
 
   - choose:
     - conditions:
@@ -1251,6 +1218,7 @@ action:
               target:
                 device_id: !input esphome_lights
               alias: Turn ESPhome light to Color Temp
+  alias: Turn ESPhome light on when chamber door open and chamber light off
 
 - if:
     - condition: template
@@ -1263,6 +1231,7 @@ action:
     - service: light.turn_on
       target:
         entity_id: "{{ chamberlight }}"
+  alias: Turn Chamber Light on print start
 
 - if:
     - condition: template
@@ -1273,5 +1242,80 @@ action:
     - service: button.press
       target:
         entity_id: "{{ tool_head_logo_light_off }}"
+  alias: Turn Tool Head logo light off on Print Finish or Failed
 
-mode: single
+- if:
+  - condition: template
+    value_template: "{{ toggle_exit_finish_after }}"
+  - condition: template
+    value_template: "{{ states(chamberlight) == 'on' }}"
+  - condition: template
+    value_template: "{{ trigger.from_state.state == 'RUNNING' and trigger.to_state.state == 'FINISH' }}"
+  then:
+  - delay: "{{ exit_finish_after_duration }}"
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ is_state(print_status, 'FINISH') }}"
+        sequence:
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ replicate_state_use_rgb }}"
+                sequence:
+                  - service: light.turn_on
+                    data:
+                      rgb_color: "{{ replicate_state_rgb_color }}"
+                      brightness_pct: "{{ bright_pct }}"
+                      effect: "{{ replicate_state_light_effect }}"
+                    target:
+                      device_id: !input esphome_lights
+                    alias: Turn ESPhome light to RGB
+              - conditions:
+                  - condition: template
+                    value_template: "{{ not replicate_state_use_rgb }}"
+                sequence:
+                  - service: light.turn_on
+                    data:
+                      kelvin: "{{ replicate_state_color_temp }}"
+                      brightness_pct: "{{ bright_pct }}"
+                      effect: "{{ replicate_state_light_effect }}"
+                    target:
+                      device_id: !input esphome_lights
+                    alias: Turn ESPhome light to Color Temp
+  alias: Turn ESPhome light back to replicate color after timeout
+
+- if:
+    - condition: template
+      value_template: "{{ toggle_light_idle_timeout_duration }}"
+    - condition: template
+      value_template: "{{ is_state(chamberlight, 'on') }}"
+    - condition: and
+      conditions:
+        - condition: template
+          value_template: "{{ states(print_status) not in ['PREPARE', 'RUNNING', 'PAUSE'] }}"
+        - condition: template
+          value_template: "{{ is_state(print_stage, 'Idle') }}"
+        - condition: template
+          value_template: "{{ is_state(print_action, 'Idle') }}"
+  then:
+    - delay: "{{ idle_timeout_duration }}"
+    - choose:
+        - conditions:
+            - condition: template
+              value_template: "{{ states(print_status) not in ['PREPARE', 'RUNNING', 'PAUSE'] }}"
+            - condition: template
+              value_template: "{{ is_state(print_stage, 'Idle') }}"
+            - condition: template
+              value_template: "{{ is_state(print_action, 'Idle') }}"
+            - condition: template
+              value_template: "{{ is_state(chamberlight, 'on') }}"
+          sequence:
+            - service: light.turn_off
+              target:
+                entity_id: !input chamber_light
+  alias: Turn Chamber light off after print idle for timeout
+
+mode: parallel
+max: 3  # (Optional, specifies the maximum number of parallel runs)
+#mode: single
