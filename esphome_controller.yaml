@@ -68,10 +68,34 @@ variables:
   bed_temp_fail_light_effect: !input paused_bed_temp_fail_light_effect
   toggle_exit_finish_after: !input toggle_exit_finish_after_duration
   toggle_light_idle_timeout_duration: !input toggle_printer_timeout_duration
+  toggle_hms_error_notification: !input toggle_hms_error_notifications
+  notify_device_mobile: !input notify_devices_mobile
+  ignore_hms_codes: !input ignored_hms_codes
+
 
 blueprint:
-  name: Bambu Lab ESPhome Controller
-  description: Control one or more ESPhome lights with Bambu 3D printer
+  name: '[Bambu Lab] ESPhome & WLED Controller'
+  description: 'Control one or more ESPhome lights with Bambu 3D printer.
+  
+  
+    **Version: v1.0.0**
+    
+    [Source](https://github.com/SevenZero0ne/ha-nodered-bambulab/blob/main/esphome_controller.yaml)
+
+    ### Information
+
+    This automation will automatically turn on your esphome or wled controller while
+    chamber light is on.
+
+
+    It will then change colors depending on that status of the printer.
+
+    ## Requirements
+
+    - [WolfwithSword -> HomeAssistant Integration via NodeRed](https://github.com/greghesp/ha-bambulab)
+
+    - ESPhome or WLED controller setup and connected to HomeAssistant as a controllable entity
+    '
   domain: automation
   source_url: https://github.com/greghesp/ha-bambulab/blob/main/blueprints/wled_controller.yaml
   input:
@@ -91,7 +115,7 @@ blueprint:
       name: Use RGB Color for Replicate Led State
       description: "Select whether to use RGB color or color temperature for replicate led state.
         Disabled=Color Temp Enabled= RGB"
-      default: true
+      default: false
       selector:
         boolean: {}
     replicate_led_state_rgb_color:
@@ -119,15 +143,15 @@ blueprint:
           options:
             - Solid
             - None
-            - Flicker
-            - Strobe
-            - Color Cycle
+            - Flicker (Simulates a flickering effect)
+            - Strobe (Quick flashing light)
+            - Color Cycle (Cycles through colors)
           mode: dropdown
 
     print_finish_use_rgb:
       name: Use RGB Color for Print Finish
       description: "Select whether to use RGB color or color temperature for print finish.
-        Disabled=Color Temp Enabled=RGB"
+        <br>Disabled=Color Temp Enabled=RGB"
       default: true
       selector:
         boolean: {}
@@ -156,9 +180,9 @@ blueprint:
           options:
             - Solid
             - None
-            - Flicker
-            - Strobe
-            - Color Cycle
+            - Flicker (Simulates a flickering effect)
+            - Strobe (Quick flashing light)
+            - Color Cycle (Cycles through colors)
           mode: dropdown
     toggle_exit_finish_after_duration:
       name: Turn on Exit Finish After timer
@@ -177,7 +201,7 @@ blueprint:
     print_paused_use_rgb:
       name: Use RGB Color for Paused State
       description: "Select whether to use RGB color or color temperature for the paused state.
-        Disabled=Color Temp, Enabled=RGB"
+        <br>Disabled=Color Temp, Enabled=RGB"
       default: true
       selector:
         boolean: {}
@@ -206,9 +230,9 @@ blueprint:
           options:
             - Solid
             - None
-            - Flicker
-            - Strobe
-            - Color Cycle
+            - Flicker (Simulates a flickering effect)
+            - Strobe (Quick flashing light)
+            - Color Cycle (Cycles through colors)
           mode: dropdown
 
     heatbed_preheating_use_rgb:
@@ -243,9 +267,9 @@ blueprint:
           options:
             - Solid
             - None
-            - Flicker
-            - Strobe
-            - Color Cycle
+            - Flicker (Simulates a flickering effect)
+            - Strobe (Quick flashing light)
+            - Color Cycle (Cycles through colors)
           mode: dropdown
 
     auto_bed_leveling_use_rgb:
@@ -280,9 +304,9 @@ blueprint:
           options:
             - Solid
             - None
-            - Flicker
-            - Strobe
-            - Color Cycle
+            - Flicker (Simulates a flickering effect)
+            - Strobe (Quick flashing light)
+            - Color Cycle (Cycles through colors)
           mode: dropdown
 
     cleaning_nozzle_tip_use_rgb:
@@ -317,9 +341,9 @@ blueprint:
           options:
             - Solid
             - None
-            - Flicker
-            - Strobe
-            - Color Cycle
+            - Flicker (Simulates a flickering effect)
+            - Strobe (Quick flashing light)
+            - Color Cycle (Cycles through colors)
           mode: dropdown
 
     pause_of_front_cover_falling_use_rgb:
@@ -354,9 +378,9 @@ blueprint:
           options:
             - Solid
             - None
-            - Flicker
-            - Strobe
-            - Color Cycle
+            - Flicker (Simulates a flickering effect)
+            - Strobe (Quick flashing light)
+            - Color Cycle (Cycles through colors)
           mode: dropdown
 
     hms_serious_use_rgb:
@@ -391,9 +415,9 @@ blueprint:
           options:
             - Solid
             - None
-            - Flicker
-            - Strobe
-            - Color Cycle
+            - Flicker (Simulates a flickering effect)
+            - Strobe (Quick flashing light)
+            - Color Cycle (Cycles through colors)
           mode: dropdown
 
     hms_fatal_use_rgb:
@@ -428,10 +452,30 @@ blueprint:
           options:
             - Solid
             - None
-            - Flicker
-            - Strobe
-            - Color Cycle
+            - Flicker (Simulates a flickering effect)
+            - Strobe (Quick flashing light)
+            - Color Cycle (Cycles through colors)
           mode: dropdown
+
+    ignored_hms_codes:
+      name: 'Ignored HMS Error Codes #NOT WORKING'
+      description: 'List of HMS error codes to ignore changing color to that hms error color
+
+
+        See [Here](https://e.bambulab.com/query.php?lang=en) for more information.
+        Only look under "device_hms", not "device_error".
+
+
+        By default, "HMS_0c00_0300_0003_000b7" and "HMS_0c00_0300_0002_0001" are ignored.
+
+        '
+      default:
+      - HMS_0c00_0300_0003_000b #Inspecting the first layer: please wait a moment.
+      - HMS_0c00_0300_0002_0001 #Filament exposure metering failed because laser relection is too weak on this material. First layer inspection may be inaccurate
+      selector:
+        text:
+          multiple: true
+          multiline: false
 
     paused_filament_runout_use_rgb:
       name: Use RGB Color for Paused due to filament runout State
@@ -465,9 +509,9 @@ blueprint:
           options:
             - Solid
             - None
-            - Flicker
-            - Strobe
-            - Color Cycle
+            - Flicker (Simulates a flickering effect)
+            - Strobe (Quick flashing light)
+            - Color Cycle (Cycles through colors)
           mode: dropdown
 
     paused_nozzle_temp_fail_use_rgb:
@@ -502,9 +546,9 @@ blueprint:
           options:
             - Solid
             - None
-            - Flicker
-            - Strobe
-            - Color Cycle
+            - Flicker (Simulates a flickering effect)
+            - Strobe (Quick flashing light)
+            - Color Cycle (Cycles through colors)
           mode: dropdown
 
     paused_bed_temp_fail_use_rgb:
@@ -539,9 +583,9 @@ blueprint:
           options:
             - Solid
             - None
-            - Flicker
-            - Strobe
-            - Color Cycle
+            - Flicker (Simulates a flickering effect)
+            - Strobe (Quick flashing light)
+            - Color Cycle (Cycles through colors)
           mode: dropdown
 
     chamber_light_off_door_open:
@@ -562,7 +606,6 @@ blueprint:
       default: true
       selector:
         boolean: {}
-
     toggle_printer_timeout_duration:
       name: Turn on Chamber light timeout after timer
       description: "Enable this to turn on Chamber light timeout timer ."
@@ -580,7 +623,8 @@ blueprint:
     printer_action:
       name: Current Action of your Bambu Lab Printer
       description: "The printer action sensor from the integration.
-        NodeRed Integration: sensor.<model>_<printer_name>print_action."
+        \nNodeRed Integration: `sensor.<model>_<printer_name>print_action`.\n"
+      default: null  # Optional field, default is null
       selector:
         entity:
           filter:
@@ -591,29 +635,25 @@ blueprint:
     printer_stage:
       name: Current Stage of your Bambu Lab Printer
       description: "The printer current stage sensor from the integration.
-        NodeRed Integration: sensor.<model>_<printer_name>_stage."
+        <br>NodeRed Integration: `sensor.<model>_<printer_name>_stage`."
       selector:
         entity:
           filter:
-          - domain:
-            - sensor
-            integration: mqtt
+          - integration: mqtt
           multiple: false
     printer_status:
-      name: Current Status of your Bambu Lab Printer
+      name: Current Status of your Bambu Lab Printer'
       description: "The printer current stage sensor from the integration.
-        NodeRed Integration: sensor.<model>_<printer_name>_print_status."
+        <br>NodeRed Integration: `sensor.<model>_<printer_name>_print_status`."
       selector:
         entity:
           filter:
-          - domain:
-            - sensor
-            integration: mqtt
+          - integration: mqtt
           multiple: false
     chamber_light:
       name: Chamber Light of your Bambu Lab Printer
       description: "The printer chamber light sensor from the integration.
-        NodeRed Integration: sensor.<model>_<printer_name>_chamber_light."
+        <br>NodeRed Integration: `light.<model>_<printer_name>_chamber_light`."
       selector:
         entity:
           filter:
@@ -624,30 +664,28 @@ blueprint:
     printer_door:
       name: Printer Door of your Bambu Lab Printer
       description: "The printer door sensor from the integration.
-        NodeRed Integration: sensor.<model>_<printer_name>_door."
+        <br>NodeRed Integration: `sensor.<model>_<printer_name>_door`."
       default: null  # Optional field, default is null
       selector:
         entity:
           filter:
-          - domain:
-            - sensor
-            integration: mqtt
+          - integration: mqtt
           multiple: false
     print_layer:
       name: Print Layer of your Bambu Lab Printer
       description: "The print layer number sensor from the integration.
-        NodeRed Integration: sensor.<model>_<printer_name>_layer_num."
+        <br>NodeRed Integration: `sensor.<model>_<printer_name>_layer_num`."
+      default: null  # Optional field, default is null
       selector:
         entity:
           filter:
-          - domain:
-            - sensor
-            integration: mqtt
+          - integration: mqtt
           multiple: false
     is_first_layer_inspect_on:
       name: Is First Layer Inspection enabled sensor of your Bambu Lab Printer
       description: "First Layer Inspection status sensor from the integration.
-        NodeRed Integration: sensor.<model>_<printer_name>_first_layer_inspection."
+        <br>NodeRed Integration: `sensor.<model>_<printer_name>_first_layer_inspection`."
+      default: null  # Optional field, default is null
       selector:
         entity:
           filter:
@@ -658,7 +696,8 @@ blueprint:
     printer_errors:
       name: Print Error Sensor
       description: "The print error sensor from the integration. Not any of the HMS sensors!
-        NodeRed Integration: sensor.<model>_<printer_name>_print_error."
+        <br>NodeRed Integration: `sensor.<model>_<printer_name>_print_error`."
+      default: null  # Optional field, default is null
       selector:
         entity:
           filter:
@@ -667,7 +706,8 @@ blueprint:
     hms_common_errors:
       name: HMS Common Error Sensor
       description: "The hms common error sensor from the integration.
-        NodeRed Integration: sensor.<model>_<printer_name>_hms_common."
+        <br>NodeRed Integration: `sensor.<model>_<printer_name>_hms_common`."
+      default: null  # Optional field, default is null
       selector:
         entity:
           filter:
@@ -676,7 +716,8 @@ blueprint:
     hms_serious_errors:
       name: HMS Serious Error Sensor
       description: "The hms serious error sensor from the integration.
-        NodeRed Integration: sensor.<model>_<printer_name>_hms_serious."
+        <br>NodeRed Integration: `sensor.<model>_<printer_name>_hms_serious`."
+      default: null  # Optional field, default is null
       selector:
         entity:
           filter:
@@ -685,7 +726,8 @@ blueprint:
     hms_fatal_errors:
       name: HMS Fatal Error Sensor
       description: "The hms fatal error sensor from the integration.
-        NodeRed Integration: sensor.<model>_<printer_name>_hms_fatal."
+        <br>NodeRed Integration: `sensor.<model>_<printer_name>_hms_fatal`."
+      default: null  # Optional field, default is null
       selector:
         entity:
           filter:
@@ -694,7 +736,7 @@ blueprint:
     toolhead_logo_light_off:
       name: Logo Light Off Button
       description: "The logo light off from the integration.
-        NodeRed Integration: sensor.<model>_<printer_name>_logo_light_off."
+        <br>NodeRed Integration: `sensor.<model>_<printer_name>_logo_light_off`."
       default: null  # Optional field, default is null
       selector:
         entity:
@@ -702,13 +744,34 @@ blueprint:
             domain: button
             integration: mqtt
     esphome_lights:
-      name: ESPhome Light devices
-      description: "Select the ESPhome light devices you wish to control."
+      name: ESPhome or WLED Light devices
+      description: "Select the ESPhome or WLED light devices you wish to control."
+      default: null  # Optional field, default is null
       selector:
         device:
           filter:
-            integration: esphome
+          - integration: esphome
+          - integration: wled
           multiple: true
+
+    notify_devices_mobile:
+      name: Mobile Notify Devices
+      description: Mobile Devices that can work with the notify service. Sends push
+        notifications.
+      default: []
+      selector:
+        device:
+          multiple: true
+          filter:
+          - integration: mobile_app
+
+    toggle_hms_error_notifications:
+      name: '[DEBUG] Enable all HMS Error Notifications'
+      description: "Enable this to send debug all HMS Error Notifications."
+      default: false
+      selector:
+        boolean: {}
+
 
 alias: Bambu Lab ESPhome Controller
 description: ''
@@ -1043,37 +1106,41 @@ action:
     #alias: Do we need to set color to blue?
 
   - choose:
-      - conditions:
-          - condition: template
-            value_template: >
-              {{ is_state(print_status, 'PAUSE') and
-                state_attr(printer_error, 'code') not in filament_runout_codes }}
-        sequence:
-          - choose:
-              - conditions:
-                  - condition: template
-                    value_template: "{{ paused_use_rgb }}"
-                sequence:
-                  - service: light.turn_on
-                    data:
-                      rgb_color: "{{ paused_rgb_color }}"
-                      brightness_pct: "{{ bright_pct }}"
-                      effect: "{{ paused_light_effect }}"
-                    target:
-                      device_id: !input esphome_lights
-                    alias: Turn ESPhome light to PAUSED RGB
-              - conditions:
-                  - condition: template
-                    value_template: "{{ not paused_use_rgb }}"
-                sequence:
-                  - service: light.turn_on
-                    data:
-                      kelvin: "{{ paused_color_temp }}"
-                      brightness_pct: "{{ bright_pct }}"
-                      effect: "{{ paused_light_effect }}"
-                    target:
-                      device_id: !input esphome_lights
-                    alias: Turn ESPhome light to PAUSED Color Temp
+    - conditions:
+      - condition: template
+        value_template: >
+          {% if is_state(print_status, 'PAUSE') %}
+            {{ is_state(printer_error, 'Error') and
+              state_attr(printer_error, 'code') == '3008013' }}
+          {% else %}
+            false
+          {% endif %}
+      sequence:
+        - choose:
+            - conditions:
+                - condition: template
+                  value_template: "{{ paused_use_rgb }}"
+              sequence:
+                - service: light.turn_on
+                  data:
+                    rgb_color: "{{ paused_rgb_color }}"
+                    brightness_pct: "{{ bright_pct }}"
+                    effect: "{{ paused_light_effect }}"
+                  target:
+                    device_id: !input esphome_lights
+                  alias: Turn ESPhome light to PAUSED RGB
+            - conditions:
+                - condition: template
+                  value_template: "{{ not paused_use_rgb }}"
+              sequence:
+                - service: light.turn_on
+                  data:
+                    kelvin: "{{ paused_color_temp }}"
+                    brightness_pct: "{{ bright_pct }}"
+                    effect: "{{ paused_light_effect }}"
+                  target:
+                    device_id: !input esphome_lights
+                  alias: Turn ESPhome light to PAUSED Color Temp
     alias: Handle PAUSED Stage
 
   - choose:
@@ -1177,6 +1244,53 @@ action:
                     device_id: !input esphome_lights
                   alias: Turn ESPhome light to Replicate State Color Temp
     alias: Handle Door Open to Replicate Color
+
+  - choose:
+    - conditions:
+        - condition: template
+          value_template: "{{ toggle_hms_error_notification }}"
+        - condition: template
+          value_template: >
+            {{ states(hms_common) | int > 0 or states(hms_serious) | int > 0 or states(hms_fatal) | int > 0 }}
+      sequence:
+        - repeat:
+            for_each: !input notify_devices_mobile
+            sequence:
+              - service: notify.mobile_app_{{ device_attr(repeat.item, 'name') | slugify }}
+                data:
+                  title: >
+                    {% set hms_common = states[hms_common] %}
+                    {% set hms_serious = states[hms_serious] %}
+                    {% set hms_fatal = states[hms_fatal] %}
+                    {% set label = 'HMS Common Error' if hms_common.state | int > 0 else
+                                    'HMS Serious Error' if hms_serious.state | int > 0 else
+                                    'HMS Fatal Error' if hms_fatal.state | int > 0 else 'No current error' %}
+                    {{ label }}
+                  message: >
+                    {% set hms_common = states[hms_common] %}
+                    {% set hms_serious = states[hms_serious] %}
+                    {% set hms_fatal = states[hms_fatal] %}
+                    {% set sensor = hms_common if hms_common.state | int > 0 else
+                                    hms_serious if hms_serious.state | int > 0 else
+                                    hms_fatal if hms_fatal.state | int > 0 else None %}
+                    {% set label = 'HMS Common Error' if hms_common.state | int > 0 else
+                                    'HMS Serious Error' if hms_serious.state | int > 0 else
+                                    'HMS Fatal Error' if hms_fatal.state | int > 0 else '' %}
+                    {% if sensor is not none and sensor.state | int > 0 %}
+                      {% set attributes = sensor.attributes %}
+                      {% if attributes %}
+                        {% for key, value in attributes.items() %}
+                          {% if key not in ['icon', 'friendly_name', 'name'] %}
+                          - {{ key }}: {{ value }}
+                          {% endif %}
+                        {% endfor %}
+                      {% else %}
+                        No attributes available.
+                      {% endif %}
+                    {% else %}
+                      No current error.
+                    {% endif %}
+
 
   else:
   - service: light.turn_off
@@ -1316,6 +1430,7 @@ action:
                 entity_id: !input chamber_light
   alias: Turn Chamber light off after print idle for timeout
 
+
 mode: parallel
-max: 3  # (Optional, specifies the maximum number of parallel runs)
+#max: 3  # (Optional, specifies the maximum number of parallel runs)
 #mode: single
