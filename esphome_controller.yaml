@@ -97,7 +97,7 @@ blueprint:
     - ESPhome or WLED controller setup and connected to HomeAssistant as a controllable entity
     '
   domain: automation
-  source_url: https://github.com/greghesp/ha-bambulab/blob/main/blueprints/wled_controller.yaml
+  source_url: https://github.com/SevenZero0ne/ha-nodered-bambulab/blob/main/esphome_controller.yaml
   input:
 
     brightness_pct:
