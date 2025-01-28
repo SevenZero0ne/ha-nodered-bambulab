@@ -844,10 +844,6 @@ action:
           value_template: >
             {{ state_attr(printer_error, 'code') in filament_runout_codes }}
       sequence:
-        - service: persistent_notification.create
-          data:
-            message: "Debug message: Printer error code is {{ state_attr(printer_error, 'code') }}."
-            title: "Debug Notification"
         - choose:
             - conditions:
                 - condition: template
