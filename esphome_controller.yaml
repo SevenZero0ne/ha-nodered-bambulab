@@ -1336,7 +1336,7 @@ action:
     - condition: template
       value_template: "{{ states(chamberlight) == 'off' }}"
     - condition: template
-      value_template: "{{ states(print_stage) == 'Heatbed preheating' }}"
+      value_template: "{{ trigger.from_state.state != 'RUNNING' and trigger.to_state.state == 'RUNNING' }}"
   then:
     - service: light.turn_on
       target:
