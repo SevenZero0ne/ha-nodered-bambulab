@@ -89,6 +89,8 @@ blueprint:
 
 
     It will then change colors depending on that status of the printer.
+    
+    Some selectable printer sensors are multiple choice, as that makes its optional for the printers that dont have the sensors.
 
     ## Requirements
 
@@ -97,7 +99,6 @@ blueprint:
     - ESPhome or WLED controller setup and connected to HomeAssistant as a controllable entity
     '
   domain: automation
-  source_url: https://github.com/SevenZero0ne/ha-nodered-bambulab/blob/main/esphome_controller.yaml
   input:
 
     brightness_pct:
@@ -458,7 +459,7 @@ blueprint:
           mode: dropdown
 
     ignored_hms_codes:
-      name: 'Ignored HMS Error Codes #NOT WORKING'
+      name: 'Ignored HMS Error Codes'
       description: 'List of HMS error codes to ignore changing color to that hms error color
 
 
@@ -466,12 +467,15 @@ blueprint:
         Only look under "device_hms", not "device_error".
 
 
-        By default, "HMS_0c00_0300_0003_000b7" and "HMS_0c00_0300_0002_0001" are ignored.
+        By default, `HMS_0c00_0300_0002_0001` `HMS_0c00_0300_0002_000c` `HMS_0c00_0300_0002_0004` `HMS_0c00_0100_0001_0004` `HMS_0C00_0300_0003_0007` are ignored.
 
         '
       default:
-      - HMS_0c00_0300_0003_000b #Inspecting the first layer: please wait a moment.
       - HMS_0c00_0300_0002_0001 #Filament exposure metering failed because laser relection is too weak on this material. First layer inspection may be inaccurate
+      - HMS_0c00_0300_0002_000c #The build plate localization marker is not detected. Please check if the build plate is aligned correctly.
+      - HMS_0c00_0300_0002_0004 #First layer inspection is not supported for the current print job.
+      - HMS_0C00_0300_0003_0007 #Possible first layer defects have been detected. Please check the first layer quality and decide if the job should be stopped.
+      - HMS_0c00_0100_0001_0004 #The Micro Lidar camera lens seems to be dirty. Please clean the lens.
       selector:
         text:
           multiple: true
@@ -624,7 +628,6 @@ blueprint:
       name: Current Action of your Bambu Lab Printer
       description: "The printer action sensor from the integration.
         \nNodeRed Integration: `sensor.<model>_<printer_name>print_action`.\n"
-      default: null  # Optional field, default is null
       selector:
         entity:
           filter:
@@ -665,17 +668,16 @@ blueprint:
       name: Printer Door of your Bambu Lab Printer
       description: "The printer door sensor from the integration.
         <br>NodeRed Integration: `sensor.<model>_<printer_name>_door`."
-      default: null  # Optional field, default is null
+      default: []  # Optional field
       selector:
         entity:
           filter:
           - integration: mqtt
-          multiple: false
+          multiple: true
     print_layer:
       name: Print Layer of your Bambu Lab Printer
       description: "The print layer number sensor from the integration.
         <br>NodeRed Integration: `sensor.<model>_<printer_name>_layer_num`."
-      default: null  # Optional field, default is null
       selector:
         entity:
           filter:
@@ -685,19 +687,18 @@ blueprint:
       name: Is First Layer Inspection enabled sensor of your Bambu Lab Printer
       description: "First Layer Inspection status sensor from the integration.
         <br>NodeRed Integration: `sensor.<model>_<printer_name>_first_layer_inspection`."
-      default: null  # Optional field, default is null
+      default: []  # Optional field
       selector:
         entity:
           filter:
           - domain:
             - sensor
             integration: mqtt
-          multiple: false
+          multiple: true
     printer_errors:
       name: Print Error Sensor
       description: "The print error sensor from the integration. Not any of the HMS sensors!
         <br>NodeRed Integration: `sensor.<model>_<printer_name>_print_error`."
-      default: null  # Optional field, default is null
       selector:
         entity:
           filter:
@@ -707,7 +708,6 @@ blueprint:
       name: HMS Common Error Sensor
       description: "The hms common error sensor from the integration.
         <br>NodeRed Integration: `sensor.<model>_<printer_name>_hms_common`."
-      default: null  # Optional field, default is null
       selector:
         entity:
           filter:
@@ -717,7 +717,6 @@ blueprint:
       name: HMS Serious Error Sensor
       description: "The hms serious error sensor from the integration.
         <br>NodeRed Integration: `sensor.<model>_<printer_name>_hms_serious`."
-      default: null  # Optional field, default is null
       selector:
         entity:
           filter:
@@ -727,7 +726,6 @@ blueprint:
       name: HMS Fatal Error Sensor
       description: "The hms fatal error sensor from the integration.
         <br>NodeRed Integration: `sensor.<model>_<printer_name>_hms_fatal`."
-      default: null  # Optional field, default is null
       selector:
         entity:
           filter:
@@ -737,16 +735,16 @@ blueprint:
       name: Logo Light Off Button
       description: "The logo light off from the integration.
         <br>NodeRed Integration: `sensor.<model>_<printer_name>_logo_light_off`."
-      default: null  # Optional field, default is null
+      default: []  # Optional field
       selector:
         entity:
           filter:
             domain: button
             integration: mqtt
+          multiple: true
     esphome_lights:
       name: ESPhome or WLED Light devices
       description: "Select the ESPhome or WLED light devices you wish to control."
-      default: null  # Optional field, default is null
       selector:
         device:
           filter:
@@ -758,7 +756,7 @@ blueprint:
       name: Mobile Notify Devices
       description: Mobile Devices that can work with the notify service. Sends push
         notifications.
-      default: []
+      default: []  # Optional field
       selector:
         device:
           multiple: true
@@ -788,7 +786,6 @@ trigger:
   - !input hms_common_errors
   - !input hms_serious_errors
   - !input hms_fatal_errors
-  - !input is_first_layer_inspect_on
   alias: When printer stage, action or chamber light state changes
 condition: []
 action:
@@ -907,6 +904,19 @@ action:
     - conditions:
         - condition: template
           value_template: "{{ states(hms_serious) | int >= 1 }}"
+        - condition: template
+          value_template: >
+            {% set attr = states[hms_serious].attributes %}
+            {% set ns = namespace(has_unignored=false, found_hms=false) %}
+            {% for key in attr %}
+              {% if key.startswith('HMS_') and 'Description' not in key and 'Module' not in key %}
+                {% set ns.found_hms = true %}
+                {% if key not in ignore_hms_codes %}
+                  {% set ns.has_unignored = true %}
+                {% endif %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.has_unignored or not ns.found_hms }}
       sequence:
         - choose:
             - conditions:
@@ -939,6 +949,19 @@ action:
     - conditions:
         - condition: template
           value_template: "{{ states(hms_fatal) | int >= 1 }}"
+        - condition: template
+          value_template: >
+            {% set attr = states[hms_fatal].attributes %}
+            {% set ns = namespace(has_unignored=false, found_hms=false) %}
+            {% for key in attr %}
+              {% if key.startswith('HMS_') and 'Description' not in key and 'Module' not in key %}
+                {% set ns.found_hms = true %}
+                {% if key not in ignore_hms_codes %}
+                  {% set ns.has_unignored = true %}
+                {% endif %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.has_unignored or not ns.found_hms }}
       sequence:
         - choose:
             - conditions:
@@ -1365,6 +1388,8 @@ action:
   - delay: "{{ exit_finish_after_duration }}"
   - choose:
       - conditions:
+          - condition: template
+            value_template: "{{ states(chamberlight) == 'on' }}"
           - condition: template
             value_template: "{{ is_state(print_status, 'FINISH') }}"
         sequence:
