@@ -77,7 +77,7 @@ blueprint:
   name: "[Bambu Lab] ESPhome & WLED Controller"
   source_url: "https://github.com/SevenZero0ne/ha-nodered-bambulab/blob/main/esphome_controller.yaml"
   author: "SevenZeroOne"
-  description: 'Control one or more ESPhome lights with Bambu 3D printer.
+  description: "Control one or more ESPhome lights with Bambu 3D printer"
   
   
     **Version: v1.0.0**
